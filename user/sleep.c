@@ -55,22 +55,24 @@ This will run the grade tests that match "sleep". Or, you can type:
      $ make GRADEFLAGS=sleep grade
 
 
-which does the same.
+which does the same. t
 
-Q: how sleep impl? */
+Q: how sleep impl? 
+A: call sys_sleep()，把当前进程挂到 chan 上状态设为 SLEEPING
+*/
 
-#include "kernel/stat.h"
 #include "kernel/types.h"
+#include "kernel/stat.h"
 #include "user/user.h"
 
 int main(int argc, char *argv[])
 {
-	int time = atoi(argv[1]);
-
 	if (argc != 2) {
 		fprintf(2, "Usage: sleep <ticks>\n");
 		exit(1);
 	}
+
+    int time = atoi(argv[1]);
 
 	if (time < 0) {
 		fprintf(2, "Error: <ticks> should > 0\n");

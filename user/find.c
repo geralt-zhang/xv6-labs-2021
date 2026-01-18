@@ -23,106 +23,104 @@ contains the files b and a/b):*/
 #include "user/user.h"
 #include "kernel/fs.h"
 
-// 获取路径的文件名
-char *fmtname(char *path)
+// 返回路径中的文件名，不填充空格，保证 null 结尾
+char* fmtname(char *path)
 {
-	static char buf[DIRSIZ + 1];
-	char *p;
+    static char buf[DIRSIZ+1];
+    char *p;
 
-	// 从路径末尾开始寻找最后一个 '/' 的位置
-	for (p = path + strlen(path); p >= path && *p != '/'; p--)
-		;
-	p++; // 跳过 '/'
+    // 找最后一个 '/'
+    for (p = path + strlen(path); p >= path && *p != '/'; p--)
+        ;
+    p++;
 
-	// 如果文件名过长，则返回文件名本身
-	if (strlen(p) >= DIRSIZ)
-		return p;
+    if (strlen(p) >= DIRSIZ)
+        return p;
 
-	// 填充空格以保证返回的文件名长度一致
-	memmove(buf, p, strlen(p));
-	memset(buf + strlen(p), ' ', DIRSIZ - strlen(p));
-	return buf;
+    memmove(buf, p, strlen(p));
+    buf[strlen(p)] = '\0';  // null 结尾
+    return buf;
 }
 
 void find(char *word, char *path)
 {
-	char buf[512], *p;
-	int fd;
-	struct dirent de;
-	struct stat st;
+    char buf[512], *p;
+    int fd;
+    struct dirent de;
+    struct stat st;
 
-	// 打开目录
-	if ((fd = open(path, 0)) < 0) {
-		fprintf(2, "find: cannot open %s\n", path);
-		return;
-	}
+    // 打开目录
+    if ((fd = open(path, 0)) < 0) {
+        fprintf(2, "find: cannot open %s\n", path);
+        return;
+    }
 
-	if (fstat(fd, &st) < 0) {
-		fprintf(2, "find: cannot stat %s\n", path);
-		close(fd);
-		return;
-	}
+    if (fstat(fd, &st) < 0) {
+        fprintf(2, "find: cannot stat %s\n", path);
+        close(fd);
+        return;
+    }
 
-	// 根据文件类型处理
-	switch (st.type) {
-	case T_FILE:
-		// 匹配文件名
-		if (strcmp(fmtname(path), word) == 0) {
-			// 找到匹配的文件
-			printf("%s %d %d %l\n", fmtname(path), st.type, st.ino,
-			       st.size);
-		}
-		break;
+    switch(st.type) {
+        case T_FILE:
+            // 匹配文件名
+            if (strcmp(fmtname(path), word) == 0) {
+                printf("%s %d %d %d\n", path, st.type, st.ino, st.size);
+            }
+            break;
 
-	case T_DIR:
-		// 确保路径不会太长
-		if (strlen(path) + 1 + DIRSIZ + 1 > sizeof buf) {
-			printf("find: path too long for directory %s\n", path);
-			break;
-		}
+        case T_DIR:
+            // 确保路径长度不溢出
+            if (strlen(path) + 1 + DIRSIZ + 1 > sizeof(buf)) {
+                printf("find: path too long %s\n", path);
+                break;
+            }
 
-		// 拼接新的路径
-		strcpy(buf, path);
-		p = buf + strlen(buf);
-		*p++ = '/';
+            strcpy(buf, path);
+            p = buf + strlen(buf);
+            *p++ = '/';
 
-		// 读取目录项
-		while (read(fd, &de, sizeof(de)) == sizeof(de)) {
-			if (de.inum == 0)
-				continue;
+            while (read(fd, &de, sizeof(de)) == sizeof(de)) {
+                if (de.inum == 0)
+                    continue;
 
-			memmove(p, de.name, DIRSIZ);
-			p[DIRSIZ] = 0;
+                memmove(p, de.name, DIRSIZ);
+                p[DIRSIZ] = 0; // null 结尾
 
-			// 跳过当前目录和父目录
-			if (strcmp(de.name, ".") == 0 ||
-			    strcmp(de.name, "..") == 0)
-				continue;
+                // 跳过 "." 和 ".."
+                if (strcmp(de.name, ".") == 0 || strcmp(de.name, "..") == 0)
+                    continue;
 
-			// 获取目录项的状态
-			if (stat(buf, &st) < 0) {
-				printf("find: cannot stat %s\n", buf);
-				continue;
-			}
+                // stat 子目录/文件
+                if (stat(buf, &st) < 0) {
+                    printf("find: cannot stat %s\n", buf);
+                    continue;
+                }
 
-			// 递归查找子目录
-			find(word, buf);
-		}
-		break;
-	}
+                // 递归查找
+                find(word, buf);
+            }
+            break;
+    }
 
-	close(fd);
+    close(fd);
 }
 
 int main(int argc, char *argv[])
 {
-	if (argc == 2) {
-		// 如果只有一个参数，从当前目录开始查找
-		find(argv[1], ".");
-		exit(0);
-	}
+    if (argc < 2) {
+        fprintf(2, "Usage: find [dir] <name>\n");
+        exit(1);
+    }
 
-	// 如果有两个参数，按照指定的目录查找
-	find(argv[2], argv[1]);
-	exit(0);
+    if (argc == 2) {
+        // 从当前目录开始查找
+        find(argv[1], ".");
+    } else if (argc == 3) {
+        // 指定目录查找
+        find(argv[2], argv[1]);
+    }
+
+    exit(0);
 }
+
