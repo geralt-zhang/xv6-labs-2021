@@ -71,15 +71,11 @@ int main(int argc, char *argv[])
 		fprintf(2, "Usage: sleep <ticks>\n");
 		exit(1);
 	}
-
     int time = atoi(argv[1]);
-
 	if (time < 0) {
 		fprintf(2, "Error: <ticks> should > 0\n");
 		exit(1);
 	}
-
 	sleep(time);
-
 	exit(0);
 }
