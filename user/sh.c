@@ -4,6 +4,10 @@
 #include "user/user.h"
 #include "kernel/fcntl.h"
 
+#pragma GCC diagnostic ignored "-Winfinite-recursion"
+
+struct cmd;
+void runcmd(struct cmd *cmd);
 // Parsed command representation
 #define EXEC  1
 #define REDIR 2

@@ -95,3 +95,19 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+uint64
+sys_trace(void) {
+  int mask;
+  struct proc *p = myproc();
+
+  // 从用户空间获取参数
+  if (argint(0, &mask) < 0)
+    return -1;
+
+  // 设置当前进程的 trace mask
+  p->trace_mask = mask;
+
+  // 返回成功
+  return 0;
+}
